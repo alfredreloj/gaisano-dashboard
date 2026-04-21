@@ -24,6 +24,40 @@ body {
   overflow: hidden;
 }
 
+/* ── User bar ──────────────────────────────────────────────────────────────── */
+#userBar {
+  background: #13151f;
+  border-bottom: 1px solid #1e2130;
+  padding: 5px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  font-size: 12px;
+  color: #5a6080;
+  flex-shrink: 0;
+}
+#userEmail { color: #8b93b0; }
+.role-badge {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 20px;
+  text-transform: uppercase;
+  letter-spacing: .5px;
+}
+.role-admin   { background: #3d1f1f; color: #f87171; border: 1px solid #f87171; }
+.role-manager { background: #2e1f4a; color: #ab7ce8; border: 1px solid #ab7ce8; }
+.role-user    { background: #1a3a38; color: #4db6ac; border: 1px solid #4db6ac; }
+
+#logoutBtn {
+  background: none; border: 1px solid #2d3148;
+  color: #5a6080; border-radius: 5px;
+  padding: 3px 10px; font-size: 11px; cursor: pointer;
+  transition: all .15s;
+}
+#logoutBtn:hover { border-color: #f87171; color: #f87171; background: #1a0a0a; }
+
 /* ── Toolbar ─────────────────────────────────────────────────────────────── */
 #toolbar {
   background: #1a1d27;
@@ -63,6 +97,12 @@ button:disabled { opacity: .45; cursor: not-allowed; }
   color: var(--accent); font-weight: 700; padding: 7px 20px;
 }
 #genBtn:hover:not(:disabled) { background: var(--accent-hover); }
+
+#saveBtn {
+  background: #1f2d4a; border-color: #60a5fa;
+  color: #60a5fa; font-weight: 600;
+}
+#saveBtn:hover:not(:disabled) { background: #253860; }
 
 label { font-size: 12px; color: #8b93b0; white-space: nowrap; }
 
@@ -138,14 +178,79 @@ svg { width: 100%; height: 100%; display: block; }
   border-radius: 50%; animation: spin .65s linear infinite;
   vertical-align: middle; margin-right: 6px;
 }
+
+/* ── Modal backdrop ──────────────────────────────────────────────────────── */
+.modal-bg {
+  position: fixed; inset: 0;
+  background: #0009; backdrop-filter: blur(4px);
+  z-index: 500; display: none; align-items: center; justify-content: center;
+}
+.modal-bg.show { display: flex; }
+.modal {
+  background: #1a1d27; border: 1px solid #2d3148;
+  border-radius: 14px; padding: 28px 32px;
+  width: 100%; max-width: 480px;
+  box-shadow: 0 20px 60px #0009;
+}
+.modal h2 { font-size: 16px; font-weight: 700; margin-bottom: 18px; color: #e2e8f0; }
+.modal-close {
+  float: right; background: none; border: none;
+  color: #5a6080; font-size: 20px; cursor: pointer; padding: 0;
+  line-height: 1; margin-top: -4px;
+}
+.modal-close:hover { color: #e2e8f0; background: none; border: none; }
+
+/* Save modal */
+#saveInput {
+  width: 100%; background: #252836; border: 1px solid #3d4266;
+  color: #e2e8f0; border-radius: 8px;
+  padding: 10px 14px; font-size: 14px; outline: none;
+  margin-bottom: 14px;
+}
+#saveInput:focus { border-color: var(--accent); }
+.modal-btns { display: flex; gap: 8px; justify-content: flex-end; }
+.modal-btns button { padding: 8px 18px; }
+.modal-btns .primary {
+  background: var(--accent-dim); border-color: var(--accent);
+  color: var(--accent); font-weight: 700;
+}
+.modal-btns .primary:hover { background: var(--accent-hover); }
+
+/* Maps list modal */
+#mapsList { display: flex; flex-direction: column; gap: 8px; max-height: 340px; overflow-y: auto; }
+.map-item {
+  display: flex; align-items: center; justify-content: space-between;
+  background: #252836; border: 1px solid #3d4266;
+  border-radius: 8px; padding: 10px 14px; cursor: pointer;
+  transition: border-color .15s;
+}
+.map-item:hover { border-color: var(--accent); }
+.map-item-title { font-size: 14px; font-weight: 600; }
+.map-item-date { font-size: 11px; color: #5a6080; margin-top: 2px; }
+.map-item-del {
+  background: none; border: none; color: #5a6080;
+  font-size: 16px; cursor: pointer; padding: 2px 6px;
+  border-radius: 4px; flex-shrink: 0;
+}
+.map-item-del:hover { color: #f87171; background: #1a0a0a; }
+.maps-empty { color: #5a6080; font-size: 14px; text-align: center; padding: 24px 0; }
 </style>
 </head>
 <body>
+
+<!-- User bar -->
+<div id="userBar">
+  <span id="userEmail">Loading…</span>
+  <span id="roleBadge" class="role-badge"></span>
+  <button id="logoutBtn">Sign out</button>
+</div>
 
 <div id="toolbar">
   <div class="trow">
     <input id="topicInput" type="text" placeholder="Enter a topic — e.g. Quantum Computing, Renaissance Art…" />
     <button id="genBtn">Generate</button>
+    <button id="saveBtn" disabled>💾 Save</button>
+    <button id="mapsBtn">📂 My Maps</button>
   </div>
   <div class="trow">
     <label>Depth</label>
@@ -194,7 +299,87 @@ svg { width: 100%; height: 100%; display: block; }
 </div>
 <input id="rin" type="text" />
 
+<!-- Save modal -->
+<div class="modal-bg" id="saveModal">
+  <div class="modal">
+    <button class="modal-close" id="saveClose">×</button>
+    <h2>Save Map</h2>
+    <input id="saveInput" type="text" placeholder="Map title…" />
+    <div class="modal-btns">
+      <button id="saveCancelBtn">Cancel</button>
+      <button class="primary" id="saveConfirmBtn">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- My Maps modal -->
+<div class="modal-bg" id="mapsModal">
+  <div class="modal">
+    <button class="modal-close" id="mapsClose">×</button>
+    <h2>My Maps</h2>
+    <div id="mapsList"></div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script>
+// ── Auth setup ───────────────────────────────────────────────────────────────
+let sbClient;
+let currentUser = null;
+let authToken = null;
+let currentMapId = null;
+
+async function initAuth() {
+  const res = await fetch('/api/config');
+  const { supabaseUrl, supabaseAnonKey } = await res.json();
+  sbClient = supabase.createClient(supabaseUrl, supabaseAnonKey);
+
+  const { data: { session } } = await sbClient.auth.getSession();
+  if (!session) { window.location.href = '/login'; return; }
+
+  currentUser = session.user;
+  authToken = session.access_token;
+
+  // Keep token fresh
+  sbClient.auth.onAuthStateChange((event, sess) => {
+    if (!sess) { window.location.href = '/login'; return; }
+    authToken = sess.access_token;
+  });
+
+  document.getElementById('userEmail').textContent = currentUser.email;
+  document.getElementById('logoutBtn').addEventListener('click', async () => {
+    await sbClient.auth.signOut();
+    window.location.href = '/login';
+  });
+
+  // Load profile for role badge
+  try {
+    const profile = await apiFetch('/api/me');
+    const role = profile.role || 'user';
+    const badge = document.getElementById('roleBadge');
+    badge.textContent = role;
+    badge.className = 'role-badge role-' + role;
+  } catch {}
+}
+
+function apiFetch(url, opts = {}) {
+  return fetch(url, {
+    ...opts,
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ' + authToken,
+      ...(opts.headers || {}),
+    },
+    body: opts.body ? JSON.stringify(opts.body) : undefined,
+  }).then(async r => {
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || 'Request failed');
+    return d;
+  });
+}
+
+initAuth();
+
 // ── Themes ──────────────────────────────────────────────────────────────────
 const THEMES = {
   teal:   {a:'#4db6ac', ab:'#1a3a38', ah:'#1f4a47', c:['#00796b','#26a69a','#4db6ac','#80cbc4']},
@@ -213,18 +398,12 @@ let tree = null;
 let undos = [];
 let vt = {x:0, y:0, s:1};
 let ctxNode = null;
-
-// drag state
 let dragNode = null, dragOffX = 0, dragOffY = 0, dragMoved = false;
 
 // ── Elements ─────────────────────────────────────────────────────────────────
 const $ = id => document.getElementById(id);
-const svgEl   = $('svg');
-const rootG   = $('root');
-const wrap    = $('wrap');
-const statEl  = $('status');
-const ctxEl   = $('ctx');
-const rinEl   = $('rin');
+const svgEl = $('svg'), rootG = $('root'), wrap = $('wrap'), statEl = $('status');
+const ctxEl = $('ctx'), rinEl = $('rin');
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 let statTimer;
@@ -235,9 +414,7 @@ function stat(msg, sticky = false) {
   if (!sticky) statTimer = setTimeout(() => statEl.classList.add('hide'), 3000);
 }
 
-function ns(tag) {
-  return document.createElementNS('http://www.w3.org/2000/svg', tag);
-}
+function ns(tag) { return document.createElementNS('http://www.w3.org/2000/svg', tag); }
 
 function flatten(node, arr = []) {
   arr.push(node);
@@ -245,9 +422,7 @@ function flatten(node, arr = []) {
   return arr;
 }
 
-function nodeColor(d) {
-  return THEMES[theme].c[Math.min(d, 3)];
-}
+function nodeColor(d) { return THEMES[theme].c[Math.min(d, 3)]; }
 
 function redrawEdges() {
   const eG = rootG.firstElementChild;
@@ -313,19 +488,14 @@ function layoutTree(node, x, y, d, xs, ys) {
 // ── Render ────────────────────────────────────────────────────────────────────
 function render() {
   if (!tree) return;
-
-  if (layout === 'radial')
-    layoutRadial(tree, 0, 0, -Math.PI, Math.PI, 230, 0);
-  else
-    layoutTree(tree, 0, 0, 0, 200, 88);
+  if (layout === 'radial') layoutRadial(tree, 0, 0, -Math.PI, Math.PI, 230, 0);
+  else layoutTree(tree, 0, 0, 0, 200, 88);
 
   rootG.innerHTML = '';
   const eG = ns('g'); rootG.appendChild(eG);
   const nG = ns('g'); rootG.appendChild(nG);
-
   const all = flatten(tree);
 
-  // edges
   all.forEach(node => {
     (node.children || []).forEach(child => {
       const p = ns('path');
@@ -339,7 +509,6 @@ function render() {
     });
   });
 
-  // nodes
   all.forEach(node => {
     const isRoot = node.depth === 0;
     const lbl = (node.label || '').slice(0, 24);
@@ -411,8 +580,7 @@ window.addEventListener('mousemove', e => {
     const nx = (e.clientX - r.left - vt.x) / vt.s - dragOffX;
     const ny = (e.clientY - r.top  - vt.y) / vt.s - dragOffY;
     if (!dragMoved) { pushUndo(); dragMoved = true; document.body.style.cursor = 'grabbing'; }
-    dragNode.x = nx;
-    dragNode.y = ny;
+    dragNode.x = nx; dragNode.y = ny;
     const gEl = rootG.querySelector(`[data-id="${dragNode.id}"]`);
     if (gEl) gEl.setAttribute('transform', `translate(${nx},${ny})`);
     redrawEdges();
@@ -439,11 +607,8 @@ wrap.addEventListener('wheel', e => {
   applyVT();
 }, { passive: false });
 
-function applyVT() {
-  rootG.setAttribute('transform', `translate(${vt.x},${vt.y}) scale(${vt.s})`);
-}
+function applyVT() { rootG.setAttribute('transform', `translate(${vt.x},${vt.y}) scale(${vt.s})`); }
 
-// ── Fit view ──────────────────────────────────────────────────────────────────
 $('fitBtn').addEventListener('click', fitView);
 function fitView() {
   if (!tree) return;
@@ -476,10 +641,7 @@ function undo() {
 }
 
 // ── Context menu ──────────────────────────────────────────────────────────────
-function showCtx(x, y) {
-  ctxEl.style.left = x+'px'; ctxEl.style.top = y+'px';
-  ctxEl.classList.add('show');
-}
+function showCtx(x, y) { ctxEl.style.left = x+'px'; ctxEl.style.top = y+'px'; ctxEl.classList.add('show'); }
 function hideCtx() { ctxEl.classList.remove('show'); }
 document.addEventListener('click', hideCtx);
 
@@ -490,17 +652,9 @@ $('cAdd').addEventListener('click', () => {
   ctxNode.children = ctxNode.children || [];
   ctxNode.children.push({ id, label: 'New Node', children: [] });
   render(); hideCtx();
-  setTimeout(() => {
-    const found = findNode(tree, id);
-    if (found) beginRename(found);
-  }, 40);
+  setTimeout(() => { const f = findNode(tree, id); if (f) beginRename(f); }, 40);
 });
-
-$('cRen').addEventListener('click', () => {
-  if (!ctxNode) return;
-  beginRename(ctxNode); hideCtx();
-});
-
+$('cRen').addEventListener('click', () => { if (!ctxNode) return; beginRename(ctxNode); hideCtx(); });
 $('cDel').addEventListener('click', () => {
   if (!ctxNode || ctxNode === tree) { stat("Can't delete root."); return; }
   pushUndo();
@@ -514,13 +668,9 @@ function removeNode(parent, id) {
   if (i !== -1) { parent.children.splice(i, 1); return; }
   parent.children.forEach(c => removeNode(c, id));
 }
-
 function findNode(node, id) {
   if (node.id === id) return node;
-  for (const c of (node.children || [])) {
-    const r = findNode(c, id);
-    if (r) return r;
-  }
+  for (const c of (node.children || [])) { const r = findNode(c, id); if (r) return r; }
   return null;
 }
 
@@ -533,13 +683,11 @@ function beginRename(node) {
   pt.x = node.x; pt.y = node.y;
   const sc = rootG.getScreenCTM();
   const sp = pt.matrixTransform(sc);
-
   rinEl.value = node.label;
   rinEl.style.left = (sp.x - 55 + svgR.left) + 'px';
   rinEl.style.top  = (sp.y - 13 + svgR.top)  + 'px';
   rinEl.style.display = 'block';
   rinEl.focus(); rinEl.select();
-
   function commit() {
     const v = rinEl.value.trim();
     if (v && v !== node.label) { pushUndo(); node.label = v; render(); }
@@ -564,7 +712,6 @@ async function generate() {
   const t = $('topicInput').value.trim();
   if (!t) { stat('Please enter a topic.'); return; }
   topic = t;
-
   $('genBtn').disabled = true;
   $('genBtn').innerHTML = '<span class="sp"></span>Generating…';
   stat('Asking Claude…', true);
@@ -582,20 +729,13 @@ Return ONLY valid JSON matching this exact shape — no markdown fences, no extr
 Use unique string IDs for every single node.`;
 
   try {
-    const apiUrl = window.location.origin + '/api/generate';
-    const res = await fetch(apiUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message: prompt }),
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Server error');
-
+    const data = await apiFetch('/api/generate', { method: 'POST', body: { message: prompt } });
     const json = parseJSON(data.text || '');
     if (!json) throw new Error('Could not parse JSON from response.');
-
     pushUndo();
     tree = json;
+    currentMapId = null;
+    $('saveBtn').disabled = false;
     render();
     fitView();
     stat('Map generated!');
@@ -614,6 +754,94 @@ function parseJSON(text) {
   const m = text.match(/\{[\s\S]*\}/);
   if (m) try { return JSON.parse(m[0]); } catch {}
   return null;
+}
+
+// ── Save map ──────────────────────────────────────────────────────────────────
+$('saveBtn').addEventListener('click', () => {
+  if (!tree) return;
+  $('saveInput').value = tree.label || '';
+  $('saveModal').classList.add('show');
+  $('saveInput').focus();
+  $('saveInput').select();
+});
+$('saveClose').addEventListener('click', () => $('saveModal').classList.remove('show'));
+$('saveCancelBtn').addEventListener('click', () => $('saveModal').classList.remove('show'));
+
+$('saveConfirmBtn').addEventListener('click', async () => {
+  const title = $('saveInput').value.trim();
+  if (!title) return;
+  $('saveConfirmBtn').disabled = true;
+  $('saveConfirmBtn').textContent = 'Saving…';
+  try {
+    if (currentMapId) {
+      await apiFetch(`/api/maps/${currentMapId}`, { method: 'PUT', body: { title, data: tree } });
+      stat('Map updated!');
+    } else {
+      const row = await apiFetch('/api/maps', { method: 'POST', body: { title, data: tree } });
+      currentMapId = row.id;
+      stat('Map saved!');
+    }
+    $('saveModal').classList.remove('show');
+  } catch (err) {
+    stat('Save failed: ' + err.message);
+  } finally {
+    $('saveConfirmBtn').disabled = false;
+    $('saveConfirmBtn').textContent = 'Save';
+  }
+});
+
+// ── My Maps modal ─────────────────────────────────────────────────────────────
+$('mapsBtn').addEventListener('click', openMapsModal);
+$('mapsClose').addEventListener('click', () => $('mapsModal').classList.remove('show'));
+
+async function openMapsModal() {
+  $('mapsModal').classList.add('show');
+  $('mapsList').innerHTML = '<div class="maps-empty">Loading…</div>';
+  try {
+    const maps = await apiFetch('/api/maps');
+    if (!maps.length) {
+      $('mapsList').innerHTML = '<div class="maps-empty">No saved maps yet.</div>';
+      return;
+    }
+    $('mapsList').innerHTML = '';
+    maps.forEach(m => {
+      const item = document.createElement('div');
+      item.className = 'map-item';
+      item.innerHTML = `
+        <div>
+          <div class="map-item-title">${escHtml(m.title)}</div>
+          <div class="map-item-date">${new Date(m.updated_at).toLocaleString()}</div>
+        </div>
+        <button class="map-item-del" data-id="${m.id}" title="Delete">✕</button>`;
+      item.querySelector('.map-item-del').addEventListener('click', async e => {
+        e.stopPropagation();
+        if (!confirm('Delete this map?')) return;
+        await apiFetch(`/api/maps/${m.id}`, { method: 'DELETE' });
+        if (currentMapId === m.id) { currentMapId = null; }
+        openMapsModal();
+      });
+      item.addEventListener('click', async () => {
+        $('mapsModal').classList.remove('show');
+        stat('Loading map…', true);
+        try {
+          const full = await apiFetch(`/api/maps/${m.id}`);
+          pushUndo();
+          tree = full.data;
+          currentMapId = full.id;
+          $('saveBtn').disabled = false;
+          render(); fitView();
+          stat('Map loaded!');
+        } catch (err) { stat('Load failed: ' + err.message); }
+      });
+      $('mapsList').appendChild(item);
+    });
+  } catch (err) {
+    $('mapsList').innerHTML = `<div class="maps-empty">Error: ${err.message}</div>`;
+  }
+}
+
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 </script>
 </body>

@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>AI Mind Map — Sign In</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: #0f1117;
+  color: #e2e8f0;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.card {
+  background: #1a1d27;
+  border: 1px solid #2d3148;
+  border-radius: 14px;
+  padding: 36px 40px;
+  width: 100%;
+  max-width: 400px;
+  box-shadow: 0 20px 60px #0008;
+}
+
+.logo {
+  text-align: center;
+  margin-bottom: 28px;
+}
+.logo h1 {
+  font-size: 22px;
+  font-weight: 700;
+  color: #4db6ac;
+  letter-spacing: -0.5px;
+}
+.logo p { font-size: 13px; color: #5a6080; margin-top: 4px; }
+
+.tabs {
+  display: flex;
+  gap: 4px;
+  background: #252836;
+  border-radius: 8px;
+  padding: 3px;
+  margin-bottom: 24px;
+}
+.tab {
+  flex: 1;
+  padding: 7px;
+  text-align: center;
+  font-size: 13px;
+  cursor: pointer;
+  border-radius: 6px;
+  color: #5a6080;
+  transition: all .15s;
+  border: none;
+  background: none;
+}
+.tab.active {
+  background: #1a1d27;
+  color: #e2e8f0;
+  font-weight: 600;
+}
+
+.form { display: none; flex-direction: column; gap: 14px; }
+.form.show { display: flex; }
+
+label { font-size: 12px; color: #8b93b0; margin-bottom: 4px; display: block; }
+
+input[type="email"],
+input[type="password"],
+input[type="text"] {
+  width: 100%;
+  background: #252836;
+  border: 1px solid #3d4266;
+  color: #e2e8f0;
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 14px;
+  outline: none;
+  transition: border-color .2s;
+}
+input:focus { border-color: #4db6ac; }
+input::placeholder { color: #3d4266; }
+
+.btn {
+  background: #1a3a38;
+  border: 1px solid #4db6ac;
+  color: #4db6ac;
+  border-radius: 8px;
+  padding: 11px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background .15s;
+  width: 100%;
+}
+.btn:hover { background: #1f4a47; }
+.btn:disabled { opacity: .5; cursor: not-allowed; }
+
+.msg {
+  font-size: 13px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  display: none;
+}
+.msg.show { display: block; }
+.msg.err { background: #3d1f1f; border: 1px solid #f87171; color: #f87171; }
+.msg.ok  { background: #1a3a38; border: 1px solid #4db6ac; color: #4db6ac; }
+
+.forgot {
+  text-align: right;
+  font-size: 12px;
+  margin-top: -8px;
+}
+.forgot a {
+  color: #5a6080;
+  text-decoration: none;
+  cursor: pointer;
+}
+.forgot a:hover { color: #4db6ac; }
+</style>
+</head>
+<body>
+
+<div class="card">
+  <div class="logo">
+    <h1>AI Mind Map</h1>
+    <p>Sign in to save and manage your maps</p>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" id="tabSignIn">Sign In</button>
+    <button class="tab" id="tabSignUp">Sign Up</button>
+  </div>
+
+  <div id="msgBox" class="msg"></div>
+
+  <!-- Sign In -->
+  <form class="form show" id="formSignIn">
+    <div>
+      <label>Email</label>
+      <input type="email" id="siEmail" placeholder="you@example.com" required />
+    </div>
+    <div>
+      <label>Password</label>
+      <input type="password" id="siPass" placeholder="••••••••" required />
+    </div>
+    <div class="forgot"><a id="forgotLink">Forgot password?</a></div>
+    <button type="submit" class="btn" id="siBtn">Sign In</button>
+  </form>
+
+  <!-- Sign Up -->
+  <form class="form" id="formSignUp">
+    <div>
+      <label>Email</label>
+      <input type="email" id="suEmail" placeholder="you@example.com" required />
+    </div>
+    <div>
+      <label>Password</label>
+      <input type="password" id="suPass" placeholder="Min. 6 characters" required />
+    </div>
+    <button type="submit" class="btn" id="suBtn">Create Account</button>
+  </form>
+
+  <!-- Forgot Password -->
+  <form class="form" id="formForgot">
+    <div>
+      <label>Email address</label>
+      <input type="email" id="fpEmail" placeholder="you@example.com" required />
+    </div>
+    <button type="submit" class="btn" id="fpBtn">Send Reset Link</button>
+    <button type="button" class="btn" id="backBtn" style="background:#252836;border-color:#3d4266;color:#8b93b0;font-weight:400">Back to Sign In</button>
+  </form>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script>
+let sbClient;
+
+async function init() {
+  const res = await fetch('/api/config');
+  const { supabaseUrl, supabaseAnonKey } = await res.json();
+  sbClient = supabase.createClient(supabaseUrl, supabaseAnonKey);
+
+  // If already logged in, go to app
+  const { data: { session } } = await sbClient.auth.getSession();
+  if (session) window.location.href = '/';
+}
+init();
+
+// Tab switching
+const tabSignIn = document.getElementById('tabSignIn');
+const tabSignUp = document.getElementById('tabSignUp');
+const formSignIn = document.getElementById('formSignIn');
+const formSignUp = document.getElementById('formSignUp');
+const formForgot = document.getElementById('formForgot');
+
+tabSignIn.addEventListener('click', () => {
+  tabSignIn.classList.add('active'); tabSignUp.classList.remove('active');
+  formSignIn.classList.add('show'); formSignUp.classList.remove('show'); formForgot.classList.remove('show');
+  clearMsg();
+});
+tabSignUp.addEventListener('click', () => {
+  tabSignUp.classList.add('active'); tabSignIn.classList.remove('active');
+  formSignUp.classList.add('show'); formSignIn.classList.remove('show'); formForgot.classList.remove('show');
+  clearMsg();
+});
+document.getElementById('forgotLink').addEventListener('click', () => {
+  formSignIn.classList.remove('show'); formForgot.classList.add('show');
+  tabSignIn.classList.remove('active'); tabSignUp.classList.remove('active');
+  clearMsg();
+});
+document.getElementById('backBtn').addEventListener('click', () => {
+  formForgot.classList.remove('show'); formSignIn.classList.add('show');
+  tabSignIn.classList.add('active');
+  clearMsg();
+});
+
+function showMsg(text, type) {
+  const el = document.getElementById('msgBox');
+  el.textContent = text;
+  el.className = 'msg show ' + type;
+}
+function clearMsg() {
+  const el = document.getElementById('msgBox');
+  el.className = 'msg';
+}
+
+// Sign In
+formSignIn.addEventListener('submit', async e => {
+  e.preventDefault();
+  const btn = document.getElementById('siBtn');
+  btn.disabled = true; btn.textContent = 'Signing in…';
+  clearMsg();
+  const { error } = await sbClient.auth.signInWithPassword({
+    email: document.getElementById('siEmail').value.trim(),
+    password: document.getElementById('siPass').value,
+  });
+  if (error) {
+    showMsg(error.message, 'err');
+    btn.disabled = false; btn.textContent = 'Sign In';
+  } else {
+    showMsg('Signed in! Redirecting…', 'ok');
+    setTimeout(() => window.location.href = '/', 800);
+  }
+});
+
+// Sign Up
+formSignUp.addEventListener('submit', async e => {
+  e.preventDefault();
+  const btn = document.getElementById('suBtn');
+  btn.disabled = true; btn.textContent = 'Creating account…';
+  clearMsg();
+  const { error } = await sbClient.auth.signUp({
+    email: document.getElementById('suEmail').value.trim(),
+    password: document.getElementById('suPass').value,
+  });
+  if (error) {
+    showMsg(error.message, 'err');
+    btn.disabled = false; btn.textContent = 'Create Account';
+  } else {
+    showMsg('Account created! Signing you in…', 'ok');
+    setTimeout(() => window.location.href = '/', 1000);
+  }
+});
+
+// Forgot Password
+formForgot.addEventListener('submit', async e => {
+  e.preventDefault();
+  const btn = document.getElementById('fpBtn');
+  btn.disabled = true; btn.textContent = 'Sending…';
+  clearMsg();
+  const { error } = await sbClient.auth.resetPasswordForEmail(
+    document.getElementById('fpEmail').value.trim()
+  );
+  btn.disabled = false; btn.textContent = 'Send Reset Link';
+  if (error) showMsg(error.message, 'err');
+  else showMsg('Reset link sent! Check your email.', 'ok');
+});
+</script>
+</body>
+</html>
